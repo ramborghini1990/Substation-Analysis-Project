@@ -16,6 +16,8 @@ class RequestHandler:
     _load_profile_file_path = './repositories/load_profiles.csv'
     _export_directory = './output'
     _model_created = False
+
+    # [input variables]
     _alpha = 0.5
     _min_alpha = 0
     _max_alpha = 1
@@ -29,9 +31,7 @@ class RequestHandler:
     _buildings_per_cluster = 3
     _min_buildings_per_cluster = 2
     _max_buildings_per_cluster = 10
-
-
-
+    # [/input variables]
 
     def __init__(self):
         self.origin_shift = 2 * math.pi * 6378137 / 2.0
@@ -150,11 +150,24 @@ class RequestHandler:
                 self.complete_model = self.stitch_graphs(self.complete_model, xfmrs, primary_positions)
                 print("Complete model: ", self.complete_model)
 
-                # self.plot_graph(self.complete_model)
+                self.plot_graph(self.complete_model)
             self.model_created = True
             print("Network creation is complete!")
         else:
             print("No substation found in selected area")
+    
+    def plot_graph(self, graph):
+        xs = []
+        ys = []
+        for u, v in graph.edges():
+            u_attr = graph.nodes[u]["pos"]
+            x1, y1 = self._lat_lon_to_meters(u_attr[1], u_attr[0])
+            v_attr = graph.nodes[v]["pos"]
+            x2, y2 = self._lat_lon_to_meters(v_attr[1], v_attr[0])
+            xs.append([x1 + self._offset, x2 + self._offset])
+            ys.append([y1 + self._offset, y2 + self._offset])
+
+        return
 
     def stitch_graphs(self, G, xfmr, primaries):
         for u , u_pos in xfmr.items():
