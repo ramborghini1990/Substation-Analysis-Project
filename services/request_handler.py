@@ -9,6 +9,23 @@ class RequestHandler:
     _substation_file_path = './repositories/substations.csv'
     _load_profile_file_path = './repositories/load_profiles.csv'
     _export_directory = './output'
+    _model_created = False
+    _alpha = 0.5
+    _min_alpha = 0
+    _max_alpha = 1
+    _alpha_step = 0.01
+    _offset = 3 #feet
+    _line_trash = 50 #feet
+    _pole_distance = 100 #feet
+    _houses_per_pole = 2
+    _min_houses_per_pole = 2
+    _max_houses_per_pole = 5
+    _buildings_per_cluster = 3
+    _min_buildings_per_cluster = 2
+    _max_buildings_per_cluster = 10
+
+
+
 
     def __init__(self):
         self.origin_shift = 2 * math.pi * 6378137 / 2.0
@@ -78,3 +95,71 @@ class RequestHandler:
         my = my * self.origin_shift / 180.0
         return mx, my
 
+
+
+    def lasso_callback(self, polygon):
+        xs = [event.geometry['x0'], event.geometry['x0'], event.geometry['x1'], event.geometry['x1']]
+        ys = [event.geometry['y0'], event.geometry['y1'], event.geometry['y1'], event.geometry['y0']]
+        if isinstance(xs, list):
+            Coordinates = []
+            for x, y in zip(xs, ys):
+                LongLat = self.MetersToLatLon(x, y)
+                Coordinates.append(LongLat)
+            polygon = geometry.Polygon(Coordinates)
+            self.G = ox.graph_from_polygon(polygon, network_type='drive')
+
+            SubstationCoords = self.get_substations_in_polygon(polygon)
+
+            if len(SubstationCoords):
+                print(f"{len(SubstationCoords)} Substations found in selected area")
+                X = []
+                Y = []
+
+                for x, y in SubstationCoords:
+                    x, y = self.LatLonToMeters(y, x)
+                    X.append(x)
+                    Y.append(y)
+
+                self.s1.data = dict(
+                    X=X,
+                    Y=Y,
+                )
+                self.subs.data_source = self.s1
+                buildingData = self.get_buildings_data(polygon)
+                
+                Primary = PrimaryModel(self.G, SubstationCoords)
+                print("Building primary model")
+                Primaries = Primary.build(self.prim_offset, self.prim_pole_distance, self.prim_line_thresh)
+                print("Primary model: ", Primaries)
+                
+                primary_positions = nx.get_node_attributes(Primaries, 'pos')
+
+                print("Building secondary model")
+                Secondary = SecondaryModel(buildingData, SubstationCoords)
+                secData = Secondary.build(
+                    buildingsPerCluster=self.sec_buildings_per_cluster,
+                    HousesPerPole=self.sec_houses_per_pole
+                )
+                print("Secondary model build complete")
+            
+                
+                K = [k.split("_") for k in secData.keys()]
+                for B, H in K:
+                    B = int(B)
+                    H = int(H)
+                    infrastructure = secData[f"{B}_{H}"]["infrastructure"]
+                    #infrastructure = Secondary.allign_infrastructure_to_road(infrastructure, self.G)
+                    infrastructure = Secondary.centroid(infrastructure, self.G, self.alpha_mult)
+                    print("Creating secondary model")
+                    secondaries, xfmrs, self.xfmr_mapping = Secondary.create_secondaries(infrastructure, secData[f"{B}_{H}"]["buildings"], B, H)
+                    print("Secondary model: ", secondaries)
+                    self.building_data_ = secData[f"{B}_{H}"]["buildings"]
+                    self.complete_model = nx.compose(Primaries, secondaries)
+                    self.complete_model = self.stitch_graphs(self.complete_model, xfmrs, primary_positions)
+                    print("Complete model: ", self.complete_model)
+
+                    self.plot_graph(self.complete_model)
+                self.model_created = True
+                print("Network creation is complete!")
+            else:
+                print("No substation found in selected area")
