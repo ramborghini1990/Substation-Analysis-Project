@@ -86,7 +86,7 @@ class SecondaryModel:
                             [[filteredDataMean["X"], filteredDataMean["Y"], "Transformer", 0, None, i]],
                             columns=["X", "Y", "Type", "TypeID", "PoleCluster", "xfmrCluster"]
                         )
-                        self.infrastructure = self.infrastructure.append(row, ignore_index=True)
+                        self.infrastructure = pd.concat([self.infrastructure, row], ignore_index=True)
 
                         fXY = filteredData[["X", "Y"]].values
                         nfilteredData = len(filteredData)
@@ -108,7 +108,7 @@ class SecondaryModel:
                                     [[PoleDataMean["X"], PoleDataMean["Y"], "Pole", 1, j, i]],
                                     columns=["X", "Y", "Type", "TypeID", "PoleCluster", "xfmrCluster"]
                                 )
-                                self.infrastructure = self.infrastructure.append(row, ignore_index=True)
+                                self.infrastructure = pd.concat([self.infrastructure, row], ignore_index=True)
                         else:
                             pass
 
@@ -280,7 +280,7 @@ class SecondaryModel:
                     row["xfmrCluster"],
                     row["PoleCluster"],
                 ]],columns=["Long", "Lat", "Name", "Type", "T", "P"])
-                data = data.append(dRow)
+                data = pd.concat([data, dRow], ignore_index=True)
 
             for idx, row in fBuild.iterrows():
                 dRow = pd.DataFrame([[
@@ -291,7 +291,7 @@ class SecondaryModel:
                     row["xfmrCluster"],
                     row["PoleCluster"],
                 ]], columns=["Long", "Lat", "Name", "Type", "T", "P"])
-                data = data.append(dRow)
+                data = pd.concat([data, dRow], ignore_index=True)
 
             data = data.drop_duplicates(subset=["Long", "Lat"], keep='last')
             data.index = range(len(data))

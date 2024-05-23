@@ -12,10 +12,10 @@ longitude = -75.1652
 
 # Creating the square around Philadelphia
 polygon_coordinates = [
-    (longitude - 0.05, latitude + 0.05),  # Top-left
-    (longitude + 0.05, latitude + 0.05),  # Top-right
-    (longitude + 0.05, latitude - 0.05),  # Bottom-right
-    (longitude - 0.05, latitude - 0.05)   # Bottom-left
+    (longitude - 0.005, latitude + 0.01),  # Top-left
+    (longitude + 0.005, latitude + 0.01),  # Top-right
+    (longitude + 0.005, latitude - 0.01),  # Bottom-right
+    (longitude - 0.005, latitude - 0.01)   # Bottom-left
 ]
 selected_area_polygon = Polygon(polygon_coordinates)
 # [/input variable population]

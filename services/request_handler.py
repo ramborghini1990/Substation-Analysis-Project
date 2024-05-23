@@ -130,8 +130,8 @@ class RequestHandler:
             print("Building secondary model")
             Secondary = SecondaryModel(building_data, substation_coords)
             sec_data = Secondary.build(
-                buildingsPerCluster=self._buildings_per_cluster,
-                HousesPerPole=self._houses_per_pole
+                buildingsPerCluster=[self._buildings_per_cluster],
+                HousesPerPole=[self._houses_per_pole]
             )
             print("Secondary model build complete")
         
