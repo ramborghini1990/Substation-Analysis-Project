@@ -22,6 +22,6 @@ selected_area_polygon = Polygon(polygon_coordinates)
 
 
 request_handler = RequestHandler()
-request_handler.insert_filtered_by_polygon_substations(selected_area_polygon)
+request_handler.get_substations_in_polygon(selected_area_polygon)
 
 print('Program ended')

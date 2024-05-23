@@ -1,9 +1,15 @@
 import math
+import mpu
+import numpy as np
 import pandas as pd
 import geopandas as gpd
 from shapely import geometry
 import os
 import osmnx as ox
+import networkx as nx
+
+from services.primary import PrimaryModel
+from services.secondary import SecondaryModel
 
 class RequestHandler:
     _substation_file_path = './repositories/substations.csv'
@@ -15,7 +21,7 @@ class RequestHandler:
     _max_alpha = 1
     _alpha_step = 0.01
     _offset = 3 #feet
-    _line_trash = 50 #feet
+    _line_treshold = 50 #feet
     _pole_distance = 100 #feet
     _houses_per_pole = 2
     _min_houses_per_pole = 2
@@ -36,7 +42,7 @@ class RequestHandler:
     def get_substations(self):
         return self._substations
     
-    def insert_filtered_by_polygon_substations(self, polygon):
+    def get_substations_in_polygon(self, polygon):
         # [puts coordinates of the substations inside the polygon in the variable coordinates]
         coordinates_of_substations_in_polygon = []
         for x, y in zip(self._substations["X"].tolist(), self._substations["Y"].tolist()):
@@ -52,6 +58,7 @@ class RequestHandler:
             text = ",".join([str(e) for e in element])
             textfile.write(text + "\n")
         textfile.close()
+        return coordinates_of_substations_in_polygon
     
     def get_buildings_data(self, polygon):
         self.building_data = {}
@@ -95,71 +102,82 @@ class RequestHandler:
         my = my * self.origin_shift / 180.0
         return mx, my
 
-    def lasso_callback(self, polygon):
-        xs = [event.geometry['x0'], event.geometry['x0'], event.geometry['x1'], event.geometry['x1']]
-        ys = [event.geometry['y0'], event.geometry['y1'], event.geometry['y1'], event.geometry['y0']]
+    def build_grid(self, polygon):
+        exterior_coords = polygon.exterior.coords
+        xs = []
+        ys = []
+        # Iterate through the coordinates and append to latitudes and longitudes lists
+        for coord in exterior_coords:
+            xs.append(coord[0])
+            ys.append(coord[1])
 
         if isinstance(xs, list):
-            Coordinates = []
+            coordinates = []
             for x, y in zip(xs, ys):
-                LongLat = self.MetersToLatLon(x, y)
-                Coordinates.append(LongLat)
-            polygon = geometry.Polygon(Coordinates)
+                long_lat = self._meters_to_lat_lon(x, y)
+                coordinates.append(long_lat)
+            polygon = geometry.Polygon(coordinates)
             self.G = ox.graph_from_polygon(polygon, network_type='drive')
 
-            SubstationCoords = self.get_substations_in_polygon(polygon)
+            substation_coords = self.get_substations_in_polygon(polygon) # read the txt file
 
-            if len(SubstationCoords):
-                print(f"{len(SubstationCoords)} Substations found in selected area")
+            if len(substation_coords):
+                print(f"{len(substation_coords)} Substations found in selected area")
                 X = []
                 Y = []
 
-                for x, y in SubstationCoords:
-                    x, y = self.LatLonToMeters(y, x)
+                for x, y in substation_coords:
+                    x, y = self._lat_lon_to_meters(y, x)
                     X.append(x)
                     Y.append(y)
 
-                self.s1.data = dict(
-                    X=X,
-                    Y=Y,
-                )
-                self.subs.data_source = self.s1
-                buildingData = self.get_buildings_data(polygon)
+                building_data = self.get_buildings_data(polygon)
                 
-                Primary = PrimaryModel(self.G, SubstationCoords)
+                Primary = PrimaryModel(self.G, substation_coords)
                 print("Building primary model")
-                Primaries = Primary.build(self.prim_offset, self.prim_pole_distance, self.prim_line_thresh)
+                Primaries = Primary.build(self._offset, self._pole_distance, self._line_treshold)
                 print("Primary model: ", Primaries)
                 
                 primary_positions = nx.get_node_attributes(Primaries, 'pos')
 
                 print("Building secondary model")
-                Secondary = SecondaryModel(buildingData, SubstationCoords)
-                secData = Secondary.build(
-                    buildingsPerCluster=self.sec_buildings_per_cluster,
-                    HousesPerPole=self.sec_houses_per_pole
+                Secondary = SecondaryModel(building_data, substation_coords)
+                sec_data = Secondary.build(
+                    buildingsPerCluster=self._buildings_per_cluster,
+                    HousesPerPole=self._houses_per_pole
                 )
                 print("Secondary model build complete")
             
                 
-                K = [k.split("_") for k in secData.keys()]
+                K = [k.split("_") for k in sec_data.keys()]
                 for B, H in K:
                     B = int(B)
                     H = int(H)
-                    infrastructure = secData[f"{B}_{H}"]["infrastructure"]
+                    infrastructure = sec_data[f"{B}_{H}"]["infrastructure"]
                     #infrastructure = Secondary.allign_infrastructure_to_road(infrastructure, self.G)
-                    infrastructure = Secondary.centroid(infrastructure, self.G, self.alpha_mult)
+                    infrastructure = Secondary.centroid(infrastructure, self.G, self._alpha)
                     print("Creating secondary model")
-                    secondaries, xfmrs, self.xfmr_mapping = Secondary.create_secondaries(infrastructure, secData[f"{B}_{H}"]["buildings"], B, H)
+                    secondaries, xfmrs, self.xfmr_mapping = Secondary.create_secondaries(infrastructure, sec_data[f"{B}_{H}"]["buildings"], B, H)
                     print("Secondary model: ", secondaries)
-                    self.building_data_ = secData[f"{B}_{H}"]["buildings"]
                     self.complete_model = nx.compose(Primaries, secondaries)
                     self.complete_model = self.stitch_graphs(self.complete_model, xfmrs, primary_positions)
                     print("Complete model: ", self.complete_model)
 
-                    self.plot_graph(self.complete_model)
+                    # self.plot_graph(self.complete_model)
                 self.model_created = True
                 print("Network creation is complete!")
             else:
                 print("No substation found in selected area")
 
+    def stitch_graphs(self, G, xfmr, primaries):
+        for u , u_pos in xfmr.items():
+            D = np.inf
+            v_f = None
+            for v, v_pos in primaries.items():
+                d = mpu.haversine_distance(np.flip(u_pos), np.flip(v_pos))
+                if d < D:
+                    D = d
+                    v_f = v
+            attrs = {"length": D}
+            G.add_edge(u, v_f, **attrs)
+        return G
