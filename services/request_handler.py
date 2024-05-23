@@ -9,6 +9,23 @@ class RequestHandler:
     _substation_file_path = './repositories/substations.csv'
     _load_profile_file_path = './repositories/load_profiles.csv'
     _export_directory = './output'
+    _model_created = False
+    _alpha = 0.5
+    _min_alpha = 0
+    _max_alpha = 1
+    _alpha_step = 0.01
+    _offset = 3 #feet
+    _line_trash = 50 #feet
+    _pole_distance = 100 #feet
+    _houses_per_pole = 2
+    _min_houses_per_pole = 2
+    _max_houses_per_pole = 5
+    _buildings_per_cluster = 3
+    _min_buildings_per_cluster = 2
+    _max_buildings_per_cluster = 10
+
+
+
 
     def __init__(self):
         self.origin_shift = 2 * math.pi * 6378137 / 2.0
@@ -145,3 +162,4 @@ class RequestHandler:
                 print("Network creation is complete!")
             else:
                 print("No substation found in selected area")
+
