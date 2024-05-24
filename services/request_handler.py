@@ -7,6 +7,7 @@ from shapely import geometry
 import os
 import osmnx as ox
 import networkx as nx
+import matplotlib.pyplot as plt
 
 from services.primary import PrimaryModel
 from services.secondary import SecondaryModel
@@ -181,3 +182,9 @@ class RequestHandler:
             attrs = {"length": D}
             G.add_edge(u, v_f, **attrs)
         return G
+    
+    
+    def plot_graph(self, G):
+        fig, ax = plt.subplots(figsize=(10, 10))
+        nx.draw_networkx(G, ax=ax, with_labels=False, node_size=10)
+        plt.show()
