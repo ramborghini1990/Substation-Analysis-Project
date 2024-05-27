@@ -8,7 +8,7 @@ import os
 import osmnx as ox
 import networkx as nx
 import matplotlib.pyplot as plt
-
+import folium
 from services.primary import PrimaryModel
 from services.secondary import SecondaryModel
 
@@ -188,3 +188,37 @@ class RequestHandler:
         fig, ax = plt.subplots(figsize=(10, 10))
         nx.draw_networkx(G, ax=ax, with_labels=False, node_size=10)
         plt.show()
+
+
+    # def plot_on_osm(self, G):
+    #     # Convert node coordinates to latitude and longitude
+    #     for node, data in G.nodes(data=True):
+    #         lon, lat = self._meters_to_lat_lon(data['X'], data['Y'])
+    #         data['y'] = lat
+    #         data['x'] = lon
+
+    #     # Plot the graph
+    #     fig, ax = ox.plot_graph(G)
+    #     plt.show()
+
+
+        
+    def plot_on_osm(self, G):
+        # Define the area of interest (AOI) for Philadelphia
+        AOI_polygon = [
+            (-75.214609, 39.943027),  # Southwest corner
+            (-75.124528, 39.943027),  # Southeast corner
+            (-75.124528, 39.972463),  # East corner
+            (-75.214609, 39.972463)   # Northwest corner
+        ]
+        
+        # Download the map data for the AOI
+        graph = ox.graph_from_polygon(AOI_polygon, network_type='all')
+        
+        # Project graph to UTM coordinates
+        G_projected = ox.project_graph(graph)
+        
+        # Plot the graph on the map
+        m = ox.plot_graph_folium(G_projected)
+        # plt.show()
+        m.save('map.html')

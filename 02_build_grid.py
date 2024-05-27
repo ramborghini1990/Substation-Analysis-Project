@@ -23,5 +23,8 @@ selected_area_polygon = Polygon(polygon_coordinates)
 
 request_handler = RequestHandler()
 request_handler.build_grid(selected_area_polygon)
+# Plot the graph on OpenStreetMap
+request_handler.plot_on_osm(request_handler.complete_model)
+
 
 print('Program ended')
