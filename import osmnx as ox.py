@@ -1,22 +1,3 @@
-# import osmnx as ox
-# import matplotlib.pyplot as plt
-
-# # Specify the name of the city and country
-# place_name = "Philadelphia, USA"
-
-# # Fetch OSM street network from the location
-# graph = ox.graph_from_place(place_name)
-
-# # Plot the streets
-# fig, ax = ox.plot_graph(graph)
-
-# plt.show()
-
-
-# import osmnx as ox
-# from shapely.geometry import Polygon
-# import folium
-
 # # Specify the coordinates for the corners of your polygon
 # AOI_polygon = Polygon([
 #     (-75.214609, 39.943027),  # Southwest corner
@@ -25,14 +6,6 @@
 #     (-75.214609, 39.972463)   # Northwest corner
 # ])
 
-# # Fetch OSM street network from the location
-# graph = ox.graph_from_polygon(AOI_polygon, network_type='all')
-
-# # Plot the streets
-# m = ox.plot_graph_folium(graph)
-
-# # Save the map to an HTML file
-# m.save('map.html')
 from services.request_handler import RequestHandler
 
 from shapely import Polygon
@@ -41,8 +14,8 @@ import osmnx as ox
 print('Starting the program')
 
 # [input variable population]
-latitude = 39.9526
-longitude = -75.1652
+latitude = 39.944932938780276
+longitude = -75.16377258263189
 
 # Creating the square around Philadelphia
 polygon_coordinates = [
@@ -54,15 +27,7 @@ polygon_coordinates = [
 selected_area_polygon = Polygon(polygon_coordinates)
 # [/input variable population]
 
-# import overpass
-# try:
-#     api = overpass.API(timeout=900)
-#     response = api.Get(f'node["power" = "substation"]({longitude - 0.005},{latitude - 0.01},{longitude + 0.005},{latitude + 0.01}); out;')
-#     print(response)
-# except Exception as ex:
-#     print(ex.args)
-
-import overpy
+# import overpy
 import overpass
 
 # Initialize Overpass API
@@ -76,7 +41,8 @@ max_lon = -74.955762
 
 # Define the query
 query = f"""
-  node["power" = "substation"]
+node["power"="transformer"](poly:"{latitude - 0.1} {longitude - 0.1} {latitude - 0.1} {longitude + 0.1} {latitude + 0.1} {longitude + 0.1} {latitude + 0.1} {longitude - 0.1} {latitude - 0.1} {longitude - 0.1}");
+out geom;
 """
 
 # Send the query
