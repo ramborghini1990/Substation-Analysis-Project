@@ -2,13 +2,14 @@ import math
 import mpu
 import numpy as np
 import pandas as pd
+import pickle
 import geopandas as gpd
 from shapely import geometry
 import os
 import osmnx as ox
-import networkx as nx
-import matplotlib.pyplot as plt
 import folium
+import networkx as nx
+from services.model import Model
 from services.primary import PrimaryModel
 from services.secondary import SecondaryModel
 
@@ -17,6 +18,11 @@ class RequestHandler:
     _load_profile_file_path = './repositories/load_profiles.csv'
     _export_directory = './output'
     _model_created = False
+
+    # [non engineering input variables]
+    _file_name = 'test'
+    _circuit_name = 'grid'
+    # [/non engineering input variables]
 
     # [input variables]
     _alpha = 0.5
@@ -32,6 +38,10 @@ class RequestHandler:
     _buildings_per_cluster = 3
     _min_buildings_per_cluster = 2
     _max_buildings_per_cluster = 10
+    _hv_voltage = 115
+    _mv_voltage = 12.47
+    _primary_conductor = '2/0  ACSR'
+    _secondary_conductor = '4  ACSR'
     # [/input variables]
 
     def __init__(self):
@@ -151,8 +161,9 @@ class RequestHandler:
                 self.complete_model = self.stitch_graphs(self.complete_model, xfmrs, primary_positions)
                 print("Complete model: ", self.complete_model)
 
-                self.plot_graph(self.complete_model)
+                # self.plot_graph(self.complete_model)
             self.model_created = True
+
             print("Network creation is complete!")
         else:
             print("No substation found in selected area")
@@ -182,32 +193,6 @@ class RequestHandler:
             attrs = {"length": D}
             G.add_edge(u, v_f, **attrs)
         return G
-    
-    
-    def plot_graph(self, G):
-        fig, ax = plt.subplots(figsize=(10, 10))
-        nx.draw_networkx(G, ax=ax, with_labels=False, node_size=10)
-        plt.show()
-
-    
-
-    # def plot_on_osm(self, G):
-    # # Define the area of interest (AOI) for Philadelphia
-    #     AOI_polygon = [
-    #         (-75.214609, 39.943027),  # Southwest corner
-    #         (-75.124528, 39.943027),  # Southeast corner
-    #         (-75.124528, 39.972463),  # Northeast corner
-    #         (-75.214609, 39.972463)   # Northwest corner
-    #     ]
-        
-    #     # Project graph G to UTM coordinates
-    #     G_projected = ox.project_graph(G)
-        
-    #     # Plot the graph on the map
-    #     m = ox.plot_graph_folium(G_projected)
-        
-    #     # Save the map to an HTML file
-    #     m.save('map.html')
 
     def plot_on_osm(self, G):
         # Convert the graph into GeoDataFrame
@@ -225,3 +210,23 @@ class RequestHandler:
 
         # Save the map to an HTML file
         m.save('map.html')
+
+    def button_clicked(self):
+        if self.model_created:
+            model_path = os.path.join(self._export_directory, f"{self._file_name}.gpickle")
+            with open(model_path, 'wb') as f:
+                pickle.dump(self.complete_model, f, pickle.HIGHEST_PROTOCOL)
+            M = Model(
+                Buildings=self.xfmr_mapping,
+                Circuit=self._circuit_name,
+                Model=self.complete_model,
+                File=self._file_name,
+                HV=self._hv_voltage,
+                MV=self._mv_voltage,
+                PC=self._primary_conductor,
+                SC=self._secondary_conductor,
+            )
+            M.Write(self._export_directory, self._load_profiles)
+            print("Model is valid")
+        else:
+            print("There is no model")
