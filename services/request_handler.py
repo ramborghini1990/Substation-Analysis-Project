@@ -189,36 +189,39 @@ class RequestHandler:
         nx.draw_networkx(G, ax=ax, with_labels=False, node_size=10)
         plt.show()
 
+    
 
     # def plot_on_osm(self, G):
-    #     # Convert node coordinates to latitude and longitude
-    #     for node, data in G.nodes(data=True):
-    #         lon, lat = self._meters_to_lat_lon(data['X'], data['Y'])
-    #         data['y'] = lat
-    #         data['x'] = lon
-
-    #     # Plot the graph
-    #     fig, ax = ox.plot_graph(G)
-    #     plt.show()
-
-
+    # # Define the area of interest (AOI) for Philadelphia
+    #     AOI_polygon = [
+    #         (-75.214609, 39.943027),  # Southwest corner
+    #         (-75.124528, 39.943027),  # Southeast corner
+    #         (-75.124528, 39.972463),  # Northeast corner
+    #         (-75.214609, 39.972463)   # Northwest corner
+    #     ]
         
+    #     # Project graph G to UTM coordinates
+    #     G_projected = ox.project_graph(G)
+        
+    #     # Plot the graph on the map
+    #     m = ox.plot_graph_folium(G_projected)
+        
+    #     # Save the map to an HTML file
+    #     m.save('map.html')
+
     def plot_on_osm(self, G):
-        # Define the area of interest (AOI) for Philadelphia
-        AOI_polygon = [
-            (-75.214609, 39.943027),  # Southwest corner
-            (-75.124528, 39.943027),  # Southeast corner
-            (-75.124528, 39.972463),  # East corner
-            (-75.214609, 39.972463)   # Northwest corner
-        ]
-        
-        # Download the map data for the AOI
-        graph = ox.graph_from_polygon(AOI_polygon, network_type='all')
-        
-        # Project graph to UTM coordinates
-        G_projected = ox.project_graph(graph)
-        
-        # Plot the graph on the map
-        m = ox.plot_graph_folium(G_projected)
-        # plt.show()
+        # Convert the graph into GeoDataFrame
+        gdf_nodes, gdf_edges = ox.graph_to_gdfs(G)
+
+        # Create a Folium map
+        m = folium.Map(location=[39.9526, -75.1652], zoom_start=14)
+
+        # Add the edges to the map
+        for _, row in gdf_edges.iterrows():
+            start = row['u']
+            end = row['v']
+            coords = [[G.nodes[start]['y'], G.nodes[start]['x']], [G.nodes[end]['y'], G.nodes[end]['x']]]
+            folium.PolyLine(coords, color='blue', weight=2).add_to(m)
+
+        # Save the map to an HTML file
         m.save('map.html')
