@@ -50,6 +50,6 @@ response = api.Get(query)
 print(response)
 
 # Print the{ results}
-for node in response.nodes:
-    print(f"Found substation at {node}")
+# for node in response.nodes:
+#     print(f"Found substation at {node}")
 
