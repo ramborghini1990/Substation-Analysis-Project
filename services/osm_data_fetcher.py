@@ -9,15 +9,15 @@ class OSMDataFetcher:
     def __init__(self) -> None:
         self._api = overpass.API()
     
-    def get_substations_by_polygons(self, polygons: List[Polygon]):
-        if polygons.geom_type == 'Polygon':
-            bounds = polygons.bounds
+    def get_substations_by_polygons(self, multi_polygon: Polygon):
+        if multi_polygon.geom_type == 'Polygon':
+            bounds = multi_polygon.bounds
             #vertices = [(round(coord[0], 6), round(coord[1], 6)) for coord in polygons.exterior.coords]
-        if polygons.geom_type == 'MultiPolygon':
-            for polygon in polygons:
+        if multi_polygon.geom_type == 'MultiPolygon':
+            for polygon in multi_polygon:
                 print('HEY BE CAREFUL! REMEMBER TO EXCLUDE THE SMALLER POLYGONS AND KEEP ONLY THE BIG ONE')
                 # GEOPANDAS FUNCTION WITHIN
-                bounds = polygons.bounds
+                bounds = multi_polygon.bounds
                 #vertices = [(round(coord[0], 6), round(coord[1], 6)) for coord in polygon.exterior.coords]
         
         sw = (bounds[0], bounds[1])
@@ -27,11 +27,10 @@ class OSMDataFetcher:
 
         rectangle_coordinates = f'"{sw[1]} {sw[0]} {se[1]} {se[0]} {ne[1]} {ne[0]} {nw[1]} {nw[0]} {sw[1]} {sw[0]}"'
 
-        # coordinates_list = ' '.join([f"{vertex[1]} {vertex[0]}" for vertex in bounds])
-        # coordinates_list = '"' + coordinates_list.strip() + '"'
-
         query = f"way[\"power\"=\"substation\"](poly: {rectangle_coordinates});out geom;"
         response = self._api.Get(query)
+
+        return response
 
         print(response)
 
