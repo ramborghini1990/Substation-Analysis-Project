@@ -1,6 +1,7 @@
 import overpass
+import pandas as pd
 from shapely import Polygon
-from typing import List
+from typing import Dict, List
 
 
 class OSMDataFetcher:
@@ -32,5 +33,29 @@ class OSMDataFetcher:
 
         return response
 
-        print(response)
+    def analyze_substations_tags_by_state(self, state: str):
+        query = f"""
+            area[name="{state}"]->.searchArea;
+            (
+                way["power"="substation"](area.searchArea);
+            );
+            out geom;
+        """
+        response = self._api.Get(query)
 
+        features_with_coords = [feature for feature in response.features if len(feature.geometry['coordinates']) > 0]
+
+        number_of_substations_found = len(features_with_coords)
+        properties = {
+            property for feature in features_with_coords for property in feature.properties
+        }
+
+        property_summary_dict: Dict[str, int] = {}
+        for property in properties:
+            for feature in features_with_coords:
+                if property in feature.properties:
+                    property_summary_dict[property] = property_summary_dict.get(property, 0) + 1
+
+        analysis_result_df = pd.DataFrame(property_summary_dict.items())
+        analysis_result_df.columns = ['property name', 'number of occurences']
+        analysis_result_df.to_excel(f'./output/{state}_substation_analysis.xlsx')

@@ -7,7 +7,6 @@ import geopandas as gpd
 from shapely import geometry
 import os
 import osmnx as ox
-import folium
 import networkx as nx
 from services.model import Model
 from services.primary import PrimaryModel
