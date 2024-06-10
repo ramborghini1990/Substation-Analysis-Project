@@ -59,3 +59,31 @@ class OSMDataFetcher:
         analysis_result_df = pd.DataFrame(property_summary_dict.items())
         analysis_result_df.columns = ['property name', 'number of occurences']
         analysis_result_df.to_excel(f'./output/{state}_substation_analysis.xlsx')
+
+        return analysis_result_df
+
+
+    def analyze_substations_tags_values_by_state(self, state: str, property_names: List[str]):
+        query = f"""
+            area[name="{state}"]->.searchArea;
+            (
+                way["power"="substation"](area.searchArea);
+            );
+            out geom;
+        """
+        response = self._api.Get(query)
+
+        features_with_coords = [feature for feature in response.features if len(feature.geometry['coordinates']) > 0]
+        values_dict: Dict[str, set] = {}
+        for property in property_names:
+            for feature in features_with_coords:
+                property_value = next((
+                    property_value for property_key, property_value in feature.properties.items() if property_key == property
+                ), None)
+                if property_value is not None:
+                    if property not in values_dict:
+                        values_dict[property] = set() 
+                    values_dict[property].add(property_value)
+
+        final_analysis_df = pd.DataFrame(values_dict.items())
+        final_analysis_df.to_excel(f'./output/{state}_tags_values_analysis.xlsx')       
