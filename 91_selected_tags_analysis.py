@@ -7,7 +7,12 @@ from services.osm_data_fetcher import OSMDataFetcher
 state = 'Italia'
 
 selected_properties = [
+'substation',
+'building',
+'operator',
 'voltage',
+'ref:terna',
+'utility',
 'voltage:secondary',
 'voltage:primary',
 'disused',
