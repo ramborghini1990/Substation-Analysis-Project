@@ -86,4 +86,61 @@ class OSMDataFetcher:
                     values_dict[property].add(property_value)
 
         final_analysis_df = pd.DataFrame(values_dict.items())
-        final_analysis_df.to_excel(f'./output/{state}_tags_values_analysis.xlsx')       
+        final_analysis_df.to_excel(f'./output/{state}_tags_values_analysis.xlsx')
+
+
+    # def analyze_substations_tags_values_by_state_distribution(self, state: str, property_names: List[str]):
+    #     query = f"""
+    #         area[name="{state}"]->.searchArea;
+    #         (
+    #             way["power"="substation"](area.searchArea);
+    #         );
+    #         out geom;
+    #     """
+    #     response = self._api.Get(query)
+
+    #     features_with_coords = [feature for feature in response.features if len(feature.geometry['coordinates']) > 0]
+    #     values_dict: Dict[str, set] = {}
+    #     distribution_substations = []
+    #     for property in property_names:
+    #         for feature in features_with_coords:
+    #             distribution_substation = next((
+    #                 feature for property_key, property_value in feature.properties.items() if property_key == "substation" and property_value == "distribution"
+    #             ), None)
+    #             if distribution_substation is not None:
+    #                 distribution_substations.append(distribution_substation)
+
+    #     print(len(distribution_substations))
+
+    def analyze_substations_tags_values_by_state_distribution(self, state: str, property_names: List[str]):
+        query = f"""
+             area[name="{state}"]->.searchArea;
+            (
+                way["power"="substation"](area.searchArea);
+            );
+            out geom;
+        """
+        response = self._api.Get(query)
+
+        features_with_coords = [feature for feature in response.features if len(feature.geometry['coordinates']) > 0]
+        distribution_substations = []
+        for feature in features_with_coords:
+            if all(key not in feature.properties for key in ["height", "it:fvg:ctrn:code", "it:fvg:ctrn:revision","operator:wikipedia",
+            "building", "disused",'voltage:secondary','voltage:primary',
+            "disused:transformer", "abandoned",'utility','disused','industrial','ref:enel:type:connection','tourism','historic','plant:source',
+            'operational_status','ruins','demolished:building','building:disused','end_date']):
+                for property in property_names:
+                    if property in feature.properties and feature.properties[property] == "distribution":
+                        distribution_substations.append(feature)
+
+        print(len(distribution_substations))
+            
+        # Prepare data for CSV
+        data_for_csv = []
+        for substation in distribution_substations:
+            coords = substation.geometry['coordinates']
+            data_for_csv.append([substation, coords[0], coords[1]])
+
+        # Convert to DataFrame and save as CSV
+        final_analysis_df = pd.DataFrame(data_for_csv, columns=['Substation', 'Longitude', 'Latitude'])
+        final_analysis_df.to_csv(f'./output/{state}_distribution_substations.csv', index=False)
