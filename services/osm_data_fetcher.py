@@ -126,7 +126,7 @@ class OSMDataFetcher:
         distribution_substations = []
         for feature in features_with_coords:
             if all(key not in feature.properties for key in ["height", "it:fvg:ctrn:code", "it:fvg:ctrn:revision","operator:wikipedia",
-            "building", "disused",'voltage:secondary','voltage:primary',
+            "disused",'voltage:secondary','voltage:primary',
             "disused:transformer", "abandoned",'utility','disused','industrial','ref:enel:type:connection','tourism','historic','plant:source',
             'operational_status','ruins','demolished:building','building:disused','end_date']):
                 for property in property_names:
