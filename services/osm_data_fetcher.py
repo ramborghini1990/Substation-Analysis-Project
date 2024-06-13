@@ -2,7 +2,7 @@ import overpass
 import pandas as pd
 from shapely import Polygon
 from typing import Dict, List
-
+from Levenshtein import distance as lev
 
 class OSMDataFetcher:
     _api = None
@@ -139,8 +139,63 @@ class OSMDataFetcher:
         data_for_csv = []
         for substation in distribution_substations:
             coords = substation.geometry['coordinates']
-            data_for_csv.append([substation, coords[0], coords[1]])
+            operator = substation.properties.get('operator', 'trallalahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh')  # Get the operator, or 'N/A' if it doesn't exist
+            data_for_csv.append([substation, coords[0], coords[1], operator])
 
         # Convert to DataFrame and save as CSV
-        final_analysis_df = pd.DataFrame(data_for_csv, columns=['Substation', 'Longitude', 'Latitude'])
+        final_analysis_df = pd.DataFrame(data_for_csv, columns=['Substation', 'Longitude', 'Latitude', 'Operator'])
         final_analysis_df.to_csv(f'./output/{state}_distribution_substations.csv', index=False)
+
+
+    def get_distinct_operators(self, csv_file):
+        
+        df = pd.read_csv(csv_file)
+
+        
+        distinct_operators = set(df['Operator'])
+
+        return distinct_operators
+
+
+    
+    def compare_operators_with_names(self, distinct_operators, names):
+        matching_operators = []
+        for operator in distinct_operators: 
+            for name in names:
+                # tmp_operator = operator
+                # tmp_name = name
+                # if lev(operator, name) < 6:
+                if isinstance(operator, str) and lev(operator, name) < 4:
+
+                    matching_operators.append({operator: name})
+        return matching_operators
+
+
+names = [
+    "AcegasApsAmga Spa",
+    "e-distribuzione S.p.A.",
+    "Assem SPA",
+    "RetiPiù Srl",
+    "V-RETI",
+    "ASM Bressanone S.p.A.",
+    "DISTRIBUZIONE ELETTRICA ADRIATICA SRL",
+    "AMAIE SPA",
+    "SECAB SOCIETÀ COOPERATIVA",
+    "Unareti S.p.A.",
+    "E.U.M. SOC. COOP. PER L'ENERGIA E L'AMBIENTE MOSO S.C.R.L.",
+    "Terni Distribuzione Elettrica",
+    "Società Cooperativa Elettrica di Distribuzione Campo Tures",
+    "AZIENDA RETI ELETTRICHE SRL",
+    "Azienda Intercomunale Rotaliana Spa - SB",
+    "EDYNA SRL",
+    "DEVAL",
+    "ARETI SPA",
+    "Dea Spa",
+    "ASM Vercelli spa",
+    "INRETE Distribuzione Energia S.p.A.",
+    "SET DISTRIBUZIONE",
+    "Ireti spa",
+    "LD RETI S.R.L.",
+    "AZIENDA SPECIALIZZATA SETTORE MULTISERVIZI S.P.A."
+]
+
