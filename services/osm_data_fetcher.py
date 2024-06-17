@@ -3,6 +3,8 @@ import pandas as pd
 from shapely import Polygon
 from typing import Dict, List
 from Levenshtein import distance as lev
+import os
+
 
 class OSMDataFetcher:
     _api = None
@@ -148,13 +150,20 @@ class OSMDataFetcher:
 
 
     def get_distinct_operators(self, csv_file):
-        
         df = pd.read_csv(csv_file)
-
-        
         distinct_operators = set(df['Operator'])
 
         return distinct_operators
+
+    def filter_operators(self, csv_file, operators_to_exclude):
+        df = pd.read_csv(csv_file)
+        filtered_df = df[~df['Operator'].isin(operators_to_exclude)]
+        # Get the filename from the csv_file path
+        filename = os.path.basename(csv_file)
+        filtered_df.to_csv(f'./output/filtered_{filename}', index=False)
+        return filtered_df
+
+
 
 
     
@@ -165,7 +174,7 @@ class OSMDataFetcher:
                 # tmp_operator = operator
                 # tmp_name = name
                 # if lev(operator, name) < 6:
-                if isinstance(operator, str) and lev(operator, name) < 4:
+                if isinstance(operator, str) and lev(operator, name) < 6:
 
                     matching_operators.append({operator: name})
         return matching_operators
