@@ -1,3 +1,4 @@
+from fuzzywuzzy import fuzz
 import math
 import mpu
 import numpy as np
@@ -8,11 +9,18 @@ from shapely import geometry
 import os
 import osmnx as ox
 import networkx as nx
+from osm_data_fetcher import OSMDataFetcher
+from repositories.operator_map import operator_map
+from repositories.substation_borders_repo import SubstationBorderRepo
 from services.model import Model
 from services.primary import PrimaryModel
 from services.secondary import SecondaryModel
 
 class RequestHandler:
+    _substation_borders_file_path = './repositories/primary_cabins.gpkg'
+
+
+
     _substation_file_path = './repositories/substations.csv'
     _load_profile_file_path = './repositories/load_profiles.csv'
     _export_directory = './output'
@@ -43,8 +51,14 @@ class RequestHandler:
     _secondary_conductor = '4  ACSR'
     # [/input variables]
 
+
+    _substation_border_repo = None
+    _fetcher = None
+
     def __init__(self):
         self.origin_shift = 2 * math.pi * 6378137 / 2.0
+        self._substation_border_repo = SubstationBorderRepo(self._substation_borders_file_path)
+        self._fetcher = OSMDataFetcher()
         self._substations = pd.read_csv(self._substation_file_path, index_col=2)
         self._load_profiles = pd.read_csv(self._load_profile_file_path)
     
@@ -111,12 +125,52 @@ class RequestHandler:
 
         my = my * self.origin_shift / 180.0
         return mx, my
+    
+    def fetch_substations_within_border(self, border_geom):
+        if border_geom.geom_type == 'Polygon':
+            data = self._fetcher.get_substations_by_polygons(border_geom)
+        elif border_geom.geom_type == 'MultiPolygon':
+            largest_polygon = max(border_geom, key=lambda poly: poly.area)
+            data = self._fetcher.get_substations_by_polygons(largest_polygon)
+        else:
+            raise ValueError("Unsupported geometry type")
+        
+        features = data.get('features', [])
 
-    def build_grid(self, polygon):
+        print(f"Fetched {len(features)} substations.")
+        return features
+    
+    def select_substation(self, substations):
+        print("Selecting substation...")
+
+        if len(substations) == 1:
+            return substations[0]
+        
+        def lev(str1, str2):
+            return fuzz.ratio(str1, str2)
+        
+        for substation in substations:
+            print("Substation properties:", substation['properties'])
+
+            if isinstance(substation, dict) and 'properties' in substation:
+                operator = substation['properties'].get('operator', '').strip()
+                for key, values in operator_map.items():
+                    if any(lev(operator, value) < 6 for value in values):
+                        print(f"Selected substation: {substation}")
+                        return substation
+            else:
+                return substations[0]
+        raise ValueError("No substation found")
+    
+
+    def build_grid(self, border_id):
+        polygon = self._substation_border_repo.fetch_substation_border(border_id)
+
+        substations_in_polygon = self.fetch_substations_within_border(polygon)
+        substation = self.select_substation(substations_in_polygon)
+        substation_coords = substation['geometry']['coordinates'] # substation_coords must be the centroid of the current substation coordinates
 
         self.G = ox.graph_from_polygon(polygon, network_type='drive')
-
-        substation_coords = self.get_substations_in_polygon(polygon)
 
         if len(substation_coords):
             print(f"{len(substation_coords)} Substations found in selected area")
@@ -145,7 +199,6 @@ class RequestHandler:
             )
             print("Secondary model build complete")
         
-            
             K = [k.split("_") for k in sec_data.keys()]
             for B, H in K:
                 B = int(B)
