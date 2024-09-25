@@ -1,4 +1,5 @@
 from fuzzywuzzy import fuzz
+from shapely.geometry import shape
 import math
 import mpu
 import numpy as np
@@ -168,19 +169,30 @@ class RequestHandler:
 
         substations_in_polygon = self.fetch_substations_within_border(polygon)
         substation = self.select_substation(substations_in_polygon)
-        substation_coords = substation['geometry']['coordinates'] # substation_coords must be the centroid of the current substation coordinates
+        print(f"Original substation geometry: {substation['geometry']}")
+
+        # substation_coords = substation['geometry']['coordinates'] # substation_coords must be the centroid of the current substation coordinates
+    
+         # Convert the substation's geometry to a Shapely object to compute the centroid
+        substation_shape = shape(substation['geometry']) 
+        substation_centroid = substation_shape.centroid
+    
+        # Extract the coordinates of the centroid
+        substation_coords = (substation_centroid.x, substation_centroid.y)
+    
+        print(f"Calculated centroid: {substation_coords}")
 
         self.G = ox.graph_from_polygon(polygon, network_type='drive')
 
         if len(substation_coords):
-            print(f"{len(substation_coords)} Substations found in selected area")
+            print(f"Substation found in selected area at centroid: {substation_coords}")
             X = []
             Y = []
-
-            for x, y in substation_coords:
-                x, y = self._lat_lon_to_meters(y, x)
-                X.append(x)
-                Y.append(y)
+            
+            # Converting the centroid coordinates to meters
+            x, y = self._lat_lon_to_meters(substation_coords[1], substation_coords[0])
+            X.append(x)
+            Y.append(y)
 
             building_data = self.get_buildings_data(polygon)
             
@@ -190,6 +202,28 @@ class RequestHandler:
             print("Primary model: ", Primaries)
             
             primary_positions = nx.get_node_attributes(Primaries, 'pos')
+
+
+        # self.G = ox.graph_from_polygon(polygon, network_type='drive')
+
+        # if len(substation_coords):
+        #     print(f"{len(substation_coords)} Substations found in selected area")
+        #     X = []
+        #     Y = []
+
+        #     for x, y in substation_coords:
+        #         x, y = self._lat_lon_to_meters(y, x)
+        #         X.append(x)
+        #         Y.append(y)
+
+        #     building_data = self.get_buildings_data(polygon)
+            
+        #     Primary = PrimaryModel(self.G, substation_coords)
+        #     print("Building primary model")
+        #     Primaries = Primary.build(self._offset, self._pole_distance, self._line_treshold)
+        #     print("Primary model: ", Primaries)
+            
+        #     primary_positions = nx.get_node_attributes(Primaries, 'pos')
 
             print("Building secondary model")
             Secondary = SecondaryModel(building_data, substation_coords)
