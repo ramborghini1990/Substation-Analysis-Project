@@ -169,7 +169,6 @@ class RequestHandler:
 
         substations_in_polygon = self.fetch_substations_within_border(polygon)
         substation = self.select_substation(substations_in_polygon)
-        print(f"Original substation geometry: {substation['geometry']}")
 
         # substation_coords = substation['geometry']['coordinates'] # substation_coords must be the centroid of the current substation coordinates
     
@@ -180,7 +179,6 @@ class RequestHandler:
         # Extract the coordinates of the centroid
         substation_coords = (substation_centroid.x, substation_centroid.y)
     
-        print(f"Calculated centroid: {substation_coords}")
 
         self.G = ox.graph_from_polygon(polygon, network_type='drive')
 
