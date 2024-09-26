@@ -1,3 +1,4 @@
+import json
 from fuzzywuzzy import fuzz
 from shapely.geometry import shape
 import math
@@ -172,13 +173,30 @@ class RequestHandler:
 
         # substation_coords = substation['geometry']['coordinates'] # substation_coords must be the centroid of the current substation coordinates
     
-         # Convert the substation's geometry to a Shapely object to compute the centroid
+        # Convert the substation's geometry to a Shapely object to compute the centroid
         substation_shape = shape(substation['geometry']) 
         substation_centroid = substation_shape.centroid
     
         # Extract the coordinates of the centroid
         substation_coords = (substation_centroid.x, substation_centroid.y)
+            
+        # Save the centroid coordinates to a JSON file
+        centroid_data = {
+            "substation_id": border_id, 
+            "centroid": {
+                "longitude": substation_coords[0],
+                "latitude": substation_coords[1]
+        }
+    }
+
+        # Define the output path for the JSON file
+        json_output_file = os.path.join('D:\\dev\\synthetic-grids\\synth-grids\\output', 'substation_centroid.json')
+        # Write the centroid data to the JSON file
+        with open(json_output_file, 'w') as json_file:
+            json.dump(centroid_data, json_file, indent=4)
     
+        print(f"Centroid coordinates saved to {json_output_file}")
+
 
         self.G = ox.graph_from_polygon(polygon, network_type='drive')
 
