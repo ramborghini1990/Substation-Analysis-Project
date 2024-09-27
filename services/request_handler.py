@@ -179,28 +179,10 @@ class RequestHandler:
     
         # Extract the coordinates of the centroid
         substation_coords = (substation_centroid.x, substation_centroid.y)
-            
-        # Save the centroid coordinates to a JSON file
-        centroid_data = {
-            "substation_id": border_id, 
-            "centroid": {
-                "longitude": substation_coords[0],
-                "latitude": substation_coords[1]
-        }
-    }
-
-        # Define the output path for the JSON file
-        json_output_file = os.path.join('D:\\dev\\synthetic-grids\\synth-grids\\output', 'substation_centroid.json')
-        # Write the centroid data to the JSON file
-        with open(json_output_file, 'w') as json_file:
-            json.dump(centroid_data, json_file, indent=4)
-    
-        print(f"Centroid coordinates saved to {json_output_file}")
-
 
         self.G = ox.graph_from_polygon(polygon, network_type='drive')
 
-        if len(substation_coords):
+        if len(substation_coords) > 0:
             print(f"Substation found in selected area at centroid: {substation_coords}")
             X = []
             Y = []
@@ -218,28 +200,6 @@ class RequestHandler:
             print("Primary model: ", Primaries)
             
             primary_positions = nx.get_node_attributes(Primaries, 'pos')
-
-
-        # self.G = ox.graph_from_polygon(polygon, network_type='drive')
-
-        # if len(substation_coords):
-        #     print(f"{len(substation_coords)} Substations found in selected area")
-        #     X = []
-        #     Y = []
-
-        #     for x, y in substation_coords:
-        #         x, y = self._lat_lon_to_meters(y, x)
-        #         X.append(x)
-        #         Y.append(y)
-
-        #     building_data = self.get_buildings_data(polygon)
-            
-        #     Primary = PrimaryModel(self.G, substation_coords)
-        #     print("Building primary model")
-        #     Primaries = Primary.build(self._offset, self._pole_distance, self._line_treshold)
-        #     print("Primary model: ", Primaries)
-            
-        #     primary_positions = nx.get_node_attributes(Primaries, 'pos')
 
             print("Building secondary model")
             Secondary = SecondaryModel(building_data, substation_coords)
