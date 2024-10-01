@@ -1,6 +1,7 @@
 import json
 from fuzzywuzzy import fuzz
 from shapely.geometry import shape
+from shapely.geometry import Point, LineString
 import math
 import mpu
 import numpy as np
@@ -20,8 +21,6 @@ from services.secondary import SecondaryModel
 
 class RequestHandler:
     _substation_borders_file_path = './repositories/primary_cabins.gpkg'
-
-
 
     _substation_file_path = './repositories/substations.csv'
     _load_profile_file_path = './repositories/load_profiles.csv'
@@ -178,7 +177,7 @@ class RequestHandler:
         substation_centroid = substation_shape.centroid
     
         # Extract the coordinates of the centroid
-        substation_coords = (substation_centroid.x, substation_centroid.y)
+        substation_coords = [(substation_centroid.x, substation_centroid.y)]
 
         self.G = ox.graph_from_polygon(polygon, network_type='drive')
 
@@ -188,7 +187,7 @@ class RequestHandler:
             Y = []
             
             # Converting the centroid coordinates to meters
-            x, y = self._lat_lon_to_meters(substation_coords[1], substation_coords[0])
+            x, y = self._lat_lon_to_meters(substation_coords[0][1], substation_coords[0][0])
             X.append(x)
             Y.append(y)
 
@@ -223,8 +222,13 @@ class RequestHandler:
                 self.complete_model = self.stitch_graphs(self.complete_model, xfmrs, primary_positions)
                 print("Complete model: ", self.complete_model)
 
+            #Call the function to create GeoJSON
+            self.create_geojson('output/coordinates.dss', 'output/test.dss', 'output/output.geojson') # 2222222222222222222222222222222222
+
                 # self.plot_graph(self.complete_model)
             self.model_created = True
+            self.button_clicked()
+
 
             print("Network creation is complete!")
         else:
@@ -292,3 +296,80 @@ class RequestHandler:
             print("Model is valid")
         else:
             print("There is no model")
+
+
+
+    def read_coordinates(self, file_path):
+        coordinates = {}
+        with open(file_path, 'r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) == 3:
+                    coordinates[parts[0]] = (float(parts[1]), float(parts[2]))
+        return coordinates
+
+    def read_test_dss(self, file_path):
+        lines = []
+        with open(file_path, 'r') as f:
+            for line in f:
+                if line.startswith("new line"):
+                    parts = line.strip().split()
+                    line_info = {
+                        'name': parts[1],
+                        'bus1': parts[2].split('=')[1],
+                        'bus2': parts[3].split('=')[1],
+                        'length': float(parts[4].split('=')[1]),
+                    }
+                    lines.append(line_info)
+        return lines
+
+    def create_geojson(self, coordinates_file, test_file, output_file):
+        coordinates = self.read_coordinates(coordinates_file)
+        lines = self.read_test_dss(test_file)
+
+        features = []
+        
+        # Create points for substations
+        for name, (lon, lat) in coordinates.items():
+            point = Point(lon, lat)
+            features.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [lon, lat]
+                },
+                "properties": {
+                    "name": name,
+                }
+            })
+
+        # Create lines for connections
+        for line in lines:
+            bus1_coords = coordinates.get(line['bus1'])
+            bus2_coords = coordinates.get(line['bus2'])
+            if bus1_coords and bus2_coords:
+                line_string = LineString([bus1_coords, bus2_coords])
+                features.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": list(line_string.coords)
+                    },
+                    "properties": {
+                        "name": line['name'],
+                        "length": line['length'],
+                    }
+                })
+
+        # Save to GeoJSON
+        geojson = {
+            "type": "FeatureCollection",
+            "features": features
+        }
+        with open(output_file, 'w') as f:
+            json.dump(geojson, f, indent=4)
+
+
+
+
+
