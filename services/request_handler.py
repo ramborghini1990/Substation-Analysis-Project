@@ -222,12 +222,9 @@ class RequestHandler:
                 self.complete_model = self.stitch_graphs(self.complete_model, xfmrs, primary_positions)
                 print("Complete model: ", self.complete_model)
 
-            #Call the function to create GeoJSON
-            self.create_geojson('output/coordinates.dss', 'output/test.dss', 'output/output.geojson') # 2222222222222222222222222222222222
-
-                # self.plot_graph(self.complete_model)
             self.model_created = True
             self.button_clicked()
+            self.create_geojson('output/coordinates.dss', 'output/test.dss', 'output/output.geojson') # 2222222222222222222222222222222222
 
 
             print("Network creation is complete!")

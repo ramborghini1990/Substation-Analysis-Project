@@ -172,6 +172,5 @@ class Model:
         self.f.write(f"Buscoords coordinates.dss\n\n")
         self.f.write(f"solve\n\n")
         self.f.close()
-
-
         return
+    

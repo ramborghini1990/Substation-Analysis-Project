@@ -44,6 +44,7 @@ class PrimaryModel:
         self.G = nx.Graph()
         nline = 0
         edge_cnt = 0
+
         nodes = {"substation": (self.substations[0][0], self.substations[1][0])}
 
         for u, v in self.rG.edges():
